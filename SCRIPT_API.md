@@ -2,7 +2,7 @@
 
 对应源码版本：**3.3.18-slim**。
 
-Clicker 根据调用方提供的脚本名称执行一次任务；执行何种脚本、何时捕捉或击败等判断由调用方完成。接口为 Android **显式绑定 Service + Messenger**，不需要打开 Clicker 页面。
+Clicker 根据调用方提供的脚本名称执行一次任务；执行何种脚本、执行条件由调用方完成。接口为 Android **显式绑定 Service + Messenger**，不需要打开 Clicker 页面。
 
 ## 准备
 
