@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Keyboard
@@ -455,6 +456,7 @@ fun MainScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     var allowedPackages by remember { mutableStateOf(com.vicuna.clicker.root.api.AllowedCallers.packages(context)) }
     var packageInput by rememberSaveable { mutableStateOf("") }
+    var showAbout by rememberSaveable { mutableStateOf(false) }
     var shizukuState by remember { mutableStateOf(com.vicuna.clicker.root.input.ShizukuAccess.state()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -466,10 +468,45 @@ fun MainScreen(
     val pageNames = listOf("主页", "功能", "授权")
     val pageIcons = listOf(Icons.Filled.Home, Icons.Filled.Widgets, Icons.Filled.MoreHoriz)
 
+    if (showAbout) {
+        AlertDialog(
+            onDismissRequest = { showAbout = false },
+            icon = { Icon(Icons.Filled.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("关于 Clicker") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("自动化点击、手势模拟与脚本录制工具。支持 ROOT / Shizuku 输入、悬浮窗控制和按脚本名称供已授权应用调用。")
+                    Text("项目主页", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("https://github.com/Vicuna1277/Clicker", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/Vicuna1277/Clicker")))
+                    } catch (_: android.content.ActivityNotFoundException) {
+                        Toast.makeText(context, "未找到可打开链接的浏览器", Toast.LENGTH_SHORT).show()
+                    }
+                }) { Text("打开项目主页") }
+            },
+            dismissButton = { TextButton(onClick = { showAbout = false }) { Text("关闭") } },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(if (selectedPage == 0) "Clicker" else pageNames[selectedPage], fontWeight = FontWeight.Bold) },
+                actions = {
+                    if (selectedPage == 0) {
+                        IconButton(onClick = { showAbout = true }) {
+                            Icon(Icons.Filled.Info, contentDescription = "软件介绍", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground

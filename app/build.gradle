@@ -10,8 +10,8 @@ android {
         applicationId "com.vicuna.clicker.root"
         minSdk 24
         targetSdk 33
-        versionCode 348
-        versionName "3.3.18-slim"
+        versionCode 349
+        versionName "3.3.19-slim"
         resourceConfigurations += ["zh-rCN", "en"]
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
