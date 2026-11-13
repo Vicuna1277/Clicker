@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/icon_click,@drawable/icon_delay,@drawable/icon_gesture,@drawable/icon_for,@drawable/icon_random,@drawable/ic_launcher_foreground" />

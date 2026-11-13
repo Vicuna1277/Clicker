@@ -1,0 +1,517 @@
+package com.vicuna.clicker.root.activity
+
+import android.annotation.SuppressLint
+import android.content.Intent
+import android.graphics.PixelFormat
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.WindowManager
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Observer
+import androidx.lifecycle.lifecycleScope
+import com.Ohuang.ilivedata.MyLiveData
+import com.vicuna.clicker.root.MyService
+import com.vicuna.clicker.root.PowerKeyObserver
+import com.vicuna.clicker.root.R
+import com.vicuna.clicker.root.ScriptExecutor
+import com.vicuna.clicker.root.SmallWindowView
+import com.vicuna.clicker.root.ScriptInterfaceImpl
+import com.vicuna.clicker.root.Util
+import com.vicuna.clicker.root.bean.ScriptCmdBean
+import com.vicuna.clicker.root.bean.ScriptGroup
+import com.vicuna.clicker.root.helper.setOnTouchClick
+import com.vicuna.clicker.root.helper.FLOAT_RESTART_DEBOUNCE_MS
+import com.vicuna.clicker.root.helper.bindMovableRunButton
+import com.vicuna.clicker.root.helper.setRunFloatState
+import com.vicuna.clicker.root.helper.smallWindowManager
+import com.vicuna.clicker.root.ui.theme.ClickerTheme
+import kotlinx.coroutines.launch
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+
+class ScriptGroupPlayActivityCompose : ComponentActivity() {
+
+    @Volatile private var isRun = false
+        set(value) {
+            if (value && !com.vicuna.clicker.root.api.ExecutionGate.acquire(this)) {
+                android.widget.Toast.makeText(this, "已有脚本正在执行", android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            field = value
+            if (!value) com.vicuna.clicker.root.api.ExecutionGate.release(this)
+        }
+
+    private var stopTime = 0L
+    private val singleThreadExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private var scriptExecutor: ScriptExecutor? = null
+    private var myService: MyService? = null
+    private var delayCoefficient = 1.0
+    private var powerKeyObserver: PowerKeyObserver? = null
+    private var observer: Observer<String>? = null
+    private var scriptGroup: ScriptGroup? = null
+    private var checkAppChange = false
+    private var thisPkgName = ""
+    private var pkgNameNow = ""
+
+    private var btnWindowView: SmallWindowView? = null
+    private var tvBtnWv: TextView? = null
+    private var wm: WindowManager? = null
+    private var btnLayoutParams: WindowManager.LayoutParams? = null
+
+
+    var isRunning by mutableStateOf(false)
+        private set
+    var currentJson by mutableStateOf("")
+        private set
+    var scriptGroupName by mutableStateOf("")
+        private set
+
+    var scriptInterface: ScriptInterfaceImpl= ScriptInterfaceImpl({
+        return@ScriptInterfaceImpl  isRun
+    })
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        scriptExecutor = ScriptExecutor(scriptInterface)
+        initSmallViewLayout()
+        initBtnWindow()
+        initObserver()
+
+        setContent {
+            ClickerTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    ScriptGroupPlayScreen(
+                        onBack = { finish() },
+                        onOpenAccessibility = { openAccessibility() },
+                        onStartScriptWindow = { startScriptWindow() },
+                        onOpenScriptList = { openScriptList() },
+                        onRunScript = { time, count, speed, actionIndex, checkChange ->
+                            runScript(time, count, speed, actionIndex, checkChange)
+                        },
+                        onStopScript = { stopScript() },
+                        isRunning = isRunning
+                    )
+                }
+            }
+        }
+
+        powerKeyObserver = PowerKeyObserver(this).apply {
+            startListen()
+            setHomeKeyListener { stopScript() }
+        }
+
+        MyLiveData.getInstance().with("ScriptGroup", ScriptGroup::class.java)
+            .observe(this) { group ->
+                scriptGroup = group
+                scriptGroupName = group?.name ?: ""
+                tvBtnWv?.setRunFloatState(
+                    isRun,
+                    startText = scriptGroupName.ifBlank { "自定义脚本" }
+                )
+            }
+    }
+
+    private fun initObserver() {
+        observer = Observer<String> { s ->
+            pkgNameNow = s ?: ""
+            if (checkAppChange) {
+                if (pkgNameNow != thisPkgName) {
+                    if (isRun) {
+                        stopScript()
+                    }
+                }
+            }
+        }
+        MyService.myService.pkgNameMutableLiveData.observeForever(observer!!)
+    }
+
+    private fun openAccessibility() {
+        Thread {
+            val ok = MyService.ensureRoot(this)
+            runOnUiThread {
+                Toast.makeText(
+                    this,
+                    if (ok) "ROOT 授权成功：${MyService.backendName()}" else "ROOT 授权失败，请检查 ROOT 管理器",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }.start()
+    }
+
+    private fun openScriptList() {
+        if (isRun) stopScript()
+        hideFloatWindows()
+        startActivity(Intent(this, ScriptGroupListActivityCompose::class.java))
+    }
+
+    private var isShow = false
+
+    private fun startScriptWindow() {
+        if (!isShow) {
+            showFloatWindows()
+        } else {
+            if (isRun) stopScript()
+            hideFloatWindows()
+        }
+    }
+
+    private fun runScript(time: Int, count: Int, speed: Double, actionIndex: Int, checkChange: Boolean) {
+        if (!MyService.isStart()) {
+            Toast.makeText(this, "请先授权 ROOT 或 Shizuku", Toast.LENGTH_LONG).show()
+            return
+        }
+        val group = scriptGroup
+        if (group == null || group.actionScript.isEmpty()) {
+            Toast.makeText(this, "请选择脚本", Toast.LENGTH_SHORT).show()
+            return
+        }
+        delayCoefficient = if (speed in 0.25..5.0) 1.0 / speed else 1.0
+        checkAppChange = checkChange
+        thisPkgName = pkgNameNow
+        val action = group.actionScript.getOrElse(actionIndex) { return }
+        val commands = group.getListScriptCmdBean(action)
+        currentJson = action.script.toString()
+        isRun = true
+        if (!isRun) return
+        isRunning = true
+        tvBtnWv?.setRunFloatState(true)
+        scriptInterface.delayCoefficient=delayCoefficient.toFloat()
+        singleThreadExecutor.execute {
+            var j = 0
+            while (isRun && (count <= 0 || j < count)) {
+                scriptExecutor?.run(commands)
+                var i2 = 0
+                while (i2 < time / 100 && isRun) {
+                    try { Thread.sleep(100) } catch (e: InterruptedException) { break }
+                    i2++
+                }
+                if (isRun) {
+                    try { Thread.sleep((time % 100).toLong()) } catch (e: InterruptedException) { break }
+                }
+                j++
+            }
+            isRun = false
+            isRunning = false
+            lifecycleScope.launch { tvBtnWv?.setRunFloatState(false) }
+        }
+    }
+
+    private fun stopScript() {
+        stopTime = System.currentTimeMillis()
+        isRun = false
+        isRunning = false
+        tvBtnWv?.setRunFloatState(false)
+    }
+
+    // region 悬浮窗
+
+    @SuppressLint("WrongConstant")
+    private fun initSmallViewLayout() {
+        btnWindowView = LayoutInflater.from(this).inflate(R.layout.window_b, null) as SmallWindowView
+        wm = smallWindowManager()
+        btnLayoutParams = WindowManager.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_SYSTEM_ALERT, 8, PixelFormat.TRANSLUCENT
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            btnLayoutParams?.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        }
+        btnLayoutParams?.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+    }
+
+    private fun initBtnWindow() {
+        tvBtnWv = btnWindowView?.findViewById(R.id.tv_win_b)
+        tvBtnWv?.setRunFloatState(false, startText = scriptGroupName.ifBlank { "自定义脚本" })
+        if (btnWindowView != null && tvBtnWv != null && wm != null && btnLayoutParams != null) {
+            btnWindowView?.bindMovableRunButton(
+                textView = tvBtnWv!!,
+                windowManager = wm!!,
+                layoutParams = btnLayoutParams!!,
+                onClick = {
+                    if (isRun) {
+                        stopScript()
+                    } else if (System.currentTimeMillis() - stopTime >= FLOAT_RESTART_DEBOUNCE_MS) {
+                        val group = scriptGroup
+                        if (group == null || group.actionScript.isEmpty()) {
+                            Toast.makeText(this, "请选择脚本", Toast.LENGTH_SHORT).show()
+                        } else {
+                            runScript(1000, 1, 1.0, 0, false)
+                        }
+                    }
+                },
+                positionKey = "script_group_run"
+            )
+        }
+    }
+
+    @SuppressLint("WrongConstant")
+    private fun alertWindow() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                Toast.makeText(this, "请先授予悬浮窗权限", Toast.LENGTH_SHORT).show()
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName")
+                )
+                startActivityForResult(intent, OVERLAY_PERMISSION_REQ_CODE)
+            } else {
+                showWindow()
+            }
+        } else {
+            showWindow()
+        }
+    }
+
+    private fun showWindow() {
+        if (wm != null && btnWindowView?.windowId == null) {
+            wm?.addView(btnWindowView, btnLayoutParams)
+        }
+    }
+
+    fun dismissWindow() {
+        try {
+            if (wm != null && btnWindowView?.windowId != null) {
+                wm?.removeView(btnWindowView)
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun showFloatWindows() {
+        alertWindow()
+        isShow = true
+    }
+
+    private fun hideFloatWindows() {
+        isShow = false
+        dismissWindow()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == OVERLAY_PERMISSION_REQ_CODE) {
+            if (Settings.canDrawOverlays(this)) {
+                showWindow()
+            } else {
+                Toast.makeText(this, "悬浮窗权限被拒绝", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+
+
+    // endregion
+
+    override fun onDestroy() {
+        super.onDestroy()
+        isRun = false
+        hideFloatWindows()
+        powerKeyObserver?.stopListen()
+        observer?.let { MyService.myService.pkgNameMutableLiveData.removeObserver(it) }
+        singleThreadExecutor.shutdownNow()
+    }
+
+    companion object {
+        private const val OVERLAY_PERMISSION_REQ_CODE = 3
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ScriptGroupPlayScreen(
+    isFloatingWindowShow: Boolean=false,
+    onBack: () -> Unit,
+    onOpenAccessibility: () -> Unit,
+    onStartScriptWindow: () -> Unit,
+    onOpenScriptList: () -> Unit,
+    onRunScript: (time: Int, count: Int, speed: Double, actionIndex: Int, checkAppChange: Boolean) -> Unit,
+    onStopScript: () -> Unit,
+    isRunning: Boolean
+) {
+    val context = LocalContext.current
+    var intervalTime by remember { mutableStateOf("1000") }
+    var clickCount by remember { mutableStateOf("0") }
+    var speed by remember { mutableStateOf("1") }
+    var checkAppChange by remember { mutableStateOf(false) }
+    var selectedIndex by remember { mutableIntStateOf(0) }
+    var localGroup by remember { mutableStateOf<ScriptGroup?>(null) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+
+
+    LaunchedEffect(Unit) {
+        MyLiveData.getInstance().with("ScriptGroup", ScriptGroup::class.java)
+            .observe(lifecycleOwner) { group ->
+                localGroup = group
+            }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("自定义脚本播放") },
+                navigationIcon = {
+                    TextButton(onClick = onBack) { Text("返回") }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Button(
+                onClick = onOpenAccessibility,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("请求 ROOT 授权")
+            }
+
+            Text(
+                text = "ROOT 模式无需无障碍和 WRITE_SECURE_SETTINGS；点击上方按钮后，在 Magisk / KernelSU 中允许授权。",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        Util.copyText(
+                            "su -c id",
+                            context
+                        )
+                        Toast.makeText(context, "已复制命令", Toast.LENGTH_SHORT).show()
+                    }
+            )
+
+            Divider()
+
+            Text("脚本执行", style = MaterialTheme.typography.titleMedium)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = intervalTime,
+                    onValueChange = { intervalTime = it.filter { c -> c.isDigit() } },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("时间间隔(ms)") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = clickCount,
+                    onValueChange = { clickCount = it.filter { c -> c.isDigit() } },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("次数(0为无限)") },
+                    singleLine = true
+                )
+            }
+
+            OutlinedTextField(
+                value = speed,
+                onValueChange = { speed = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("执行速度倍速(0.25~5)") },
+                singleLine = true
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = checkAppChange,
+                    onCheckedChange = { checkAppChange = it }
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("检测到应用切换时停止脚本", style = MaterialTheme.typography.bodyMedium)
+            }
+
+            Button(
+                onClick = onStartScriptWindow,
+                modifier = Modifier.fillMaxWidth(),
+                colors = if (isFloatingWindowShow) ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                ) else ButtonDefaults.buttonColors()
+            ) {
+                Text(if (isFloatingWindowShow) "关闭悬浮窗" else "打开脚本悬浮窗")
+            }
+
+            Button(
+                onClick = onOpenScriptList,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("选择脚本")
+            }
+
+            Divider()
+
+            localGroup?.let { group ->
+                Text("脚本名称: ${group.name}", style = MaterialTheme.typography.titleMedium)
+
+                if (group.actionScript.isNotEmpty()) {
+                    Text("选择动作:", style = MaterialTheme.typography.bodyMedium)
+                    group.actionScript.forEachIndexed { index, action ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(
+                                selected = selectedIndex == index,
+                                onClick = { selectedIndex = index }
+                            )
+                            Text(
+                                text = action.name.ifEmpty { "动作 ${index + 1}" },
+                                modifier = Modifier.padding(start = 4.dp)
+                            )
+                        }
+                    }
+
+                    val selectedAction = group.actionScript.getOrNull(selectedIndex)
+                    selectedAction?.let { action ->
+                        Text(
+                            text = action.script.toString(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    Util.copyText(action.script.toString(), context)
+                                    Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                                }
+                        )
+                    }
+                }
+            } ?: Text("未加载脚本组", style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}

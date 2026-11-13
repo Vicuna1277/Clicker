@@ -1,0 +1,102 @@
+package com.vicuna.clicker.root.db;
+
+import androidx.room.Entity;
+import androidx.room.Ignore;
+import androidx.room.PrimaryKey;
+
+import com.vicuna.clicker.root.bean.ScriptCmdBean;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.util.List;
+
+@Entity(tableName = "script")
+public class ScriptDataBean {
+    @PrimaryKey(autoGenerate = true)
+    private int id;
+
+    private String name;
+
+    private String createTime;
+
+    private String updateTime;
+
+    private String scriptJson;
+
+    private float xCoefficient = 1.0f;
+
+    private float yCoefficient = 1.0f;
+
+    public ScriptDataBean() {
+    }
+
+
+
+    @Ignore
+    public ScriptDataBean(String name, String createTime, String updateTime, String scriptJson) {
+        this.name = name;
+        this.createTime = createTime;
+        this.updateTime = updateTime;
+        this.scriptJson = scriptJson;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getStringId(){
+        return id+"";
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(String createTime) {
+        this.createTime = createTime;
+    }
+
+    public String getUpdateTime() {
+        return updateTime;
+    }
+
+    public void setUpdateTime(String updateTime) {
+        this.updateTime = updateTime;
+    }
+
+    public String getScriptJson() {
+        return scriptJson;
+    }
+
+    public void setScriptJson(String scriptJson) {
+        this.scriptJson = scriptJson;
+    }
+
+    public float getXCoefficient() {
+        return xCoefficient;
+    }
+
+    public void setXCoefficient(float xCoefficient) {
+        this.xCoefficient = xCoefficient;
+    }
+
+    public float getYCoefficient() {
+        return yCoefficient;
+    }
+
+    public void setYCoefficient(float yCoefficient) {
+        this.yCoefficient = yCoefficient;
+    }
+}

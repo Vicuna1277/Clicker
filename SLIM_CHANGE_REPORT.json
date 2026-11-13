@@ -1,0 +1,113 @@
+{
+  "original_project": "D:\\Android\\clickdevice_android_root_v3.3.3_click_record_fix",
+  "clean_project": "D:\\Desktop\\Codex\\2026-10-18\\referenced-chatgpt-conversation-this-is-an\\outputs\\ClickerRoot_3_3_4_slim",
+  "copied_files": 105,
+  "removed_files": [
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\adapter\\BaseViewHolder.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\adapter\\SimpleCallbackHelp.java",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\helper\\FragmentHelper.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\view\\CornerImageView.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\view\\OvalViewOutlineProvider.java",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\view\\RecordTouchView.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\view\\RoundViewOutlineProvider.java",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\view\\ViewStyleSetter.java",
+    "app/src/main/res/drawable-v24/btn_ok_dialog_sign.xml",
+    "app/src/main/res/drawable/btn_background.xml",
+    "app/src/main/res/drawable/edit_background.xml",
+    "app/src/main/res/drawable/ic_launcher_background.xml",
+    "app/src/main/res/color/btn_color.xml"
+  ],
+  "removed_preview_functions": 12,
+  "preview_files": [
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\activity\\KeyBindingEditActivity.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\activity\\KeyBindingListActivity.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\activity\\LauncherScriptActivityCompose.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\activity\\MainActivityCompose.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\activity\\RecordScriptActivityCompose.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\activity\\RecordScriptListActivityCompose.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\activity\\RecordScriptPlayActivityCompose.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\activity\\ScriptActivityCompose.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\activity\\ScriptGroupEditActivityCompose.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\activity\\ScriptGroupListActivityCompose.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\activity\\ScriptGroupPlayActivityCompose.kt",
+    "app\\src\\main\\java\\com\\vicuna\\clicker\\root\\activity\\ScriptListActivityCompose.kt"
+  ],
+  "service_components_before": 0,
+  "service_components_after": 0,
+  "root_input_unchanged": true,
+  "original_untouched": true,
+  "apk_generated": false,
+  "shizuku_implemented": false,
+  "size_reduction_measured": false,
+  "java_syntax_files": 21,
+  "kotlin_syntax_files": 38,
+  "xml_parsed": true,
+  "unused_resource_references_checked": true,
+  "build_variants_shrunk": [
+    "debug",
+    "release"
+  ],
+  "abi": [
+    "arm64-v8a"
+  ],
+  "languages": [
+    "zh-rCN",
+    "en"
+  ],
+  "root_native_and_recording_unchanged": true,
+  "r8_dynamic_entry_and_json_models_kept": true,
+  "full_build_completed": false,
+  "device_tested": false,
+  "services_deleted": 0,
+  "signing_key_copied": false,
+  "build_error_fix": {
+    "restored_declaration": "activity.ScriptRunConfig",
+    "cause": "Preview cleanup previously truncated a non-preview data class after the preview function",
+    "retained_kotlin_files_audited": 38,
+    "other_missing_non_preview_declarations": 0,
+    "kotlin_syntax_files": 38,
+    "restored_config_semantic_compile_and_run": true,
+    "full_release_build_verified": false,
+    "full_build_limitation": "Offline execution environment cannot resolve AGP 8.1.4 or Kotlin Gradle plugin 1.9.22",
+    "apk_generated": false
+  },
+  "floating_key_background_fix": {
+    "style": "Direct GradientDrawable, rounded border, green idle/red running, minimum 80x40dp",
+    "custom_text_settings_preserved": true,
+    "coordinate_picker_icon_retained": true,
+    "background_resource_switch_removed": true,
+    "root_cause_runtime_reproduced": false,
+    "resource_report_all_four_old_backgrounds_reachable": true,
+    "build_or_package_checks_run": false
+  },
+  "command_icon_fix": {
+    "version": "3.3.5-slim",
+    "mapping": {
+      "click": "icon_click",
+      "delay": "icon_delay",
+      "gesture": "icon_gesture",
+      "loop_start": "icon_for",
+      "loop_end": "icon_for",
+      "random_click": "icon_random"
+    },
+    "implementation": "Unified named drawable resolution for ordinary script insert/list and group action/list, explicit resource retention; group action icon constrained to 36dp.",
+    "verification": "Source/resource XML inspection only; no build, packaging or device checks. Original source mappings were already correct; runtime mismatch root cause not reproduced."
+  },
+  "layout_and_coordinate_update": {
+    "version": "3.3.6-slim",
+    "pages": [
+      "主页",
+      "功能",
+      "预留（内容空白）"
+    ],
+    "feature_layout": "Vertical list: ordinary scripts, recordings, custom scripts, key settings",
+    "home_su_copy_module_removed": true,
+    "coordinate_controls_removed": true,
+    "coordinate_scaling_removed": true,
+    "legacy_fields_retained_for_compatibility": true,
+    "timing_speed_preserved": true,
+    "declaration_comparison": "No function, class, interface or object declarations removed",
+    "build_or_package_checks_run": false,
+    "device_tested": false
+  }
+}
